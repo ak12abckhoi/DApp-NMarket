@@ -13,6 +13,7 @@ export function useTotalListings() {
     abi: MARKETPLACE_ABI,
     functionName: "totalListings",
     chainId: hardhat.id,
+    query: { enabled: true, refetchInterval: 3000 },
   });
 }
 
@@ -23,6 +24,7 @@ export function useListing(listingId: number) {
     functionName: "getListing",
     args: [BigInt(listingId)],
     chainId: hardhat.id,
+    query: { enabled: true },
   });
 }
 

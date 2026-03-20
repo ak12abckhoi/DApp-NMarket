@@ -10,7 +10,8 @@ function useAllListings(total: number) {
 
 export default function MarketplacePage() {
   const [search, setSearch] = useState("");
-  const { data: total = 0n } = useTotalListings();
+  const { data: total = 0n, isLoading, isError, error } = useTotalListings();
+  console.log("totalListings:", { total, isLoading, isError, error });
   const ids = useAllListings(Number(total));
 
   return (
@@ -42,8 +43,8 @@ export default function MarketplacePage() {
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
           { label: "Total Listings", value: total.toString() },
-          { label: "Platform Fee",   value: "2.5%" },
-          { label: "Network",        value: "Localhost" },
+          { label: "Platform Fee", value: "2.5%" },
+          { label: "Network", value: "Localhost" },
         ].map((s) => (
           <div key={s.label} className="bg-gray-900 rounded-xl p-4 text-center border border-gray-800">
             <p className="text-2xl font-bold text-white">{s.value}</p>
@@ -87,11 +88,20 @@ function ListingLoader({ id }: { id: number }) {
   if (listing.status !== ListingStatus.Active) return null;
 
   return (
-    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
-      <div className="aspect-square bg-gray-800 rounded-xl mb-3 flex items-center justify-center text-4xl">🖼️</div>
-      <p className="text-white font-semibold text-sm">NFT #{listing.tokenId}</p>
-      <p className="text-gray-500 text-xs font-mono mt-1">{listing.seller.slice(0,6)}...{listing.seller.slice(-4)}</p>
-      <p className="text-purple-400 font-bold mt-2">{Number(listing.price) / 1e18} ETH</p>
-    </div>
+    <a href={`/nft/${listing.listingId}`} className="block group bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 hover:border-purple-500/50 transition-all cursor-pointer">
+      <div className="aspect-square bg-gray-800 flex items-center justify-center text-4xl">🖼️</div>
+      <div className="p-4">
+        <p className="text-white font-semibold text-sm">NFT #{listing.tokenId}</p>
+        <p className="text-gray-500 text-xs font-mono mt-1">{listing.seller.slice(0,6)}...{listing.seller.slice(-4)}</p>
+        <p className="text-purple-400 font-bold mt-2">
+          {listing.listingType === 1 && listing.highestBid > 0n
+            ? `${Number(listing.highestBid) / 1e18} ETH (bid)`
+            : `${Number(listing.price) / 1e18} ETH`}
+        </p>
+        {listing.listingType === 1 && (
+          <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full mt-1 inline-block">Auction</span>
+        )}
+      </div>
+    </a>
   );
 }
