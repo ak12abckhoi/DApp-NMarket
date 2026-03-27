@@ -54,6 +54,18 @@ async function main() {
 
   console.log("\nDone! Saved to deployments/localhost.json");
   console.log(addresses);
+
+  const frontendConfig = {
+    NFTCollection:  await nft.getAddress(),
+    NFTMarketplace: await market.getAddress(),
+    NFTFactory:     await factory.getAddress(),
+    deployer:       deployer.address,
+    chainId:        31337,
+  };
+
+  const frontendPath = path.join(__dirname, "../../frontend/src/config/contracts.json");
+  fs.writeFileSync(frontendPath, JSON.stringify(frontendConfig, null, 2));
+  console.log("✅ Synced to frontend/src/config/contracts.json");
 }
 
 main().catch((e) => { console.error(e); process.exitCode = 1; });

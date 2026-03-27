@@ -1,7 +1,14 @@
-import { useState } from "react";
 import { useTotalListings, useListing } from "@/hooks/useMarketplace";
 import NFTGrid from "@/components/nft/NFTGrid";
 import { Listing, ListingStatus } from "@/types";
+// Thêm useState, useEffect vào import react
+import { useState, useEffect } from "react";
+
+// Thêm fetchMetadata
+import { fetchMetadata } from "@/utils/ipfs";
+
+// Thêm NFTCard
+import NFTCard from "@/components/nft/NFTCard";
 
 function useAllListings(total: number) {
   const ids = Array.from({ length: Math.min(total, 20) }, (_, i) => i);
@@ -68,40 +75,83 @@ function ListingsGrid({ ids }: { ids: number[] }) {
 
 function ListingLoader({ id }: { id: number }) {
   const { data, isLoading } = useListing(id);
+  const [listing, setListing] = useState<Listing | null>(null);
 
-  if (isLoading) return <div className="aspect-square bg-gray-900 rounded-2xl animate-pulse border border-gray-800" />;
-  if (!data) return null;
+  useEffect(() => {
+    if (!data) return;
 
-  const listing: Listing = {
-    listingId:     id,
-    nftContract:   data[1] as string,
-    tokenId:       Number(data[2]),
-    seller:        data[3] as string,
-    price:         data[4] as bigint,
-    endTime:       Number(data[5]),
-    highestBidder: data[6] as string,
-    highestBid:    data[7] as bigint,
-    listingType:   Number(data[8]),
-    status:        Number(data[9]),
-  };
+    const base: Listing = {
+      listingId: id,
+      nftContract: data[1] as string,
+      tokenId: Number(data[2]),
+      seller: data[3] as string,
+      price: data[4] as bigint,
+      endTime: Number(data[5]),
+      highestBidder: data[6] as string,
+      highestBid: data[7] as bigint,
+      listingType: Number(data[8]),
+      status: Number(data[9]),
+    };
+
+    if (base.status !== ListingStatus.Active) {
+      setListing(base);
+      return;
+    }
+
+    // 👇 Fetch tokenURI rồi fetch metadata
+    const load = async () => {
+      try {
+        // Gọi tokenURI từ NFT contract
+        const { createPublicClient, http } = await import("viem");
+        const { localhost } = await import("viem/chains");
+        const client = createPublicClient({ chain: localhost, transport: http() });
+
+        const tokenURI = await client.readContract({
+          address: base.nftContract as `0x${string}`,
+          abi: [
+            {
+              name: "tokenURI",
+              type: "function",
+              stateMutability: "view",
+              inputs: [{ name: "tokenId", type: "uint256" }],
+              outputs: [{ type: "string" }],
+            },
+          ],
+          functionName: "tokenURI",
+          args: [BigInt(base.tokenId)],
+        }) as string;
+
+        const metadata = await fetchMetadata(tokenURI);
+
+        setListing({
+          ...base,
+          nft: {
+            tokenId: base.tokenId,
+            contractAddress: base.nftContract,
+            owner: base.seller,        // 👈 thêm
+            tokenURI: tokenURI,           // 👈 thêm
+            metadata: {
+              name: metadata?.name || `NFT #${base.tokenId}`,
+              description: metadata?.description || "",
+              image: metadata?.image || "",
+            },
+          },
+        });
+      } catch (e) {
+        console.error("Failed to load NFT metadata:", e);
+        setListing(base);
+      }
+    };
+
+    load();
+  }, [data, id]);
+
+  if (isLoading || !listing) {
+    return <div className="aspect-square bg-gray-900 rounded-2xl animate-pulse border border-gray-800" />;
+  }
 
   if (listing.status !== ListingStatus.Active) return null;
 
-  return (
-    <a href={`/nft/${listing.listingId}`} className="block group bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 hover:border-purple-500/50 transition-all cursor-pointer">
-      <div className="aspect-square bg-gray-800 flex items-center justify-center text-4xl">🖼️</div>
-      <div className="p-4">
-        <p className="text-white font-semibold text-sm">NFT #{listing.tokenId}</p>
-        <p className="text-gray-500 text-xs font-mono mt-1">{listing.seller.slice(0,6)}...{listing.seller.slice(-4)}</p>
-        <p className="text-purple-400 font-bold mt-2">
-          {listing.listingType === 1 && listing.highestBid > 0n
-            ? `${Number(listing.highestBid) / 1e18} ETH (bid)`
-            : `${Number(listing.price) / 1e18} ETH`}
-        </p>
-        {listing.listingType === 1 && (
-          <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full mt-1 inline-block">Auction</span>
-        )}
-      </div>
-    </a>
-  );
+  // 👇 Dùng NFTCard thật thay vì inline card
+  return <NFTCard listing={listing} />;
 }

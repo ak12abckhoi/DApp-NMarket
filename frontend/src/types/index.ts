@@ -5,7 +5,7 @@ export interface NFTMetadata {
   description: string;
   image: string;
   external_url?: string;
-  attributes: NFTAttribute[];
+  attributes?: NFTAttribute[];
 }
 
 export interface NFTAttribute {
