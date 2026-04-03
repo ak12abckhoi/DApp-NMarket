@@ -1,9 +1,8 @@
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import init_db
 from app.api import listings, stats
-import webbrowser
-import threading
 
 app = FastAPI(title="NFT Marketplace API", version="1.0.0")
 
@@ -20,6 +19,15 @@ app.include_router(stats.router)
 @app.on_event("startup")
 async def startup():
     await init_db()
+    # Khởi động indexer chạy nền
+    asyncio.create_task(start_indexer())
+
+async def start_indexer():
+    try:
+        from app.indexer.listener import run_indexer
+        await run_indexer()
+    except Exception as e:
+        print(f"[INDEXER] Failed to start: {e}")
 
 @app.get("/")
 async def root():
@@ -41,8 +49,3 @@ async def debug_rpc():
         "code_length": len(code) if code else 0,
         "marketplace": settings.NFT_MARKETPLACE
     }
-
-def open_browser():
-    webbrowser.open("http://127.0.0.1:8000/docs")
-
-threading.Timer(1.5, open_browser).start()
