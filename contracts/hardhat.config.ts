@@ -3,6 +3,8 @@ import "@nomicfoundation/hardhat-toolbox";
 import * as dotenv from "dotenv";
 dotenv.config();
 
+const accounts = process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : [];
+
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.24",
@@ -14,16 +16,11 @@ const config: HardhatUserConfig = {
     localhost: {
       url: "http://127.0.0.1:8545",
     },
-    sepolia: {
-      url: process.env.SEPOLIA_RPC_URL ?? "",
-      accounts:
-        process.env.PRIVATE_KEY !== undefined
-          ? [`0x${process.env.PRIVATE_KEY}`]
-          : [],
+    oasis_sapphire_testnet: {
+      url: process.env.OASIS_RPC_URL ?? "https://testnet.sapphire.oasis.io",
+      accounts,
+      chainId: 23295,
     },
-  },
-  etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY ?? "",
   },
 };
 

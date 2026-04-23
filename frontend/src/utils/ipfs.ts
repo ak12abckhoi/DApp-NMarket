@@ -47,11 +47,24 @@ export function resolveIPFS(uri: string): string {
   return uri;
 }
 
-// Fetch metadata từ tokenURI
+// Fetch metadata from tokenURI — 5-second timeout to avoid hanging
 export async function fetchMetadata(tokenURI: string) {
+  // Inline JSON (data:application/json;base64,...) — dùng cho seed NFTs
+  if (tokenURI.startsWith("data:application/json")) {
+    try {
+      const encoded = tokenURI.split(",")[1];
+      return JSON.parse(atob(encoded));
+    } catch {
+      return null;
+    }
+  }
+
   try {
     const url = resolveIPFS(tokenURI);
-    const res = await fetch(url);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
     if (!res.ok) return null;
     return await res.json();
   } catch {

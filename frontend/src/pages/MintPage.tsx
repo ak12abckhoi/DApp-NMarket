@@ -97,7 +97,7 @@ export default function MintPage() {
         {mintPrice && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex justify-between">
             <span className="text-gray-400 text-sm">Mint Price</span>
-            <span className="text-white font-semibold">{Number(mintPrice) / 1e18} ETH + gas</span>
+            <span className="text-white font-semibold">{Number(mintPrice) / 1e18} TEST + gas</span>
           </div>
         )}
 

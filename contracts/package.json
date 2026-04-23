@@ -4,7 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test":        "echo \"Error: no test specified\" && exit 1",
+    "node":        "node scripts/start-node.js",
+    "node:reset":  "node scripts/start-node.js --reset",
+    "node:fresh":  "hardhat node",
+    "deploy":             "hardhat run scripts/deploy.ts --network localhost",
+    "seed":               "hardhat run scripts/seed.ts --network localhost",
+    "deploy:oasis":       "hardhat run scripts/deploy.ts --network oasis_sapphire_testnet",
+    "seed:oasis":         "hardhat run scripts/seed.ts --network oasis_sapphire_testnet"
   },
   "keywords": [],
   "author": "",

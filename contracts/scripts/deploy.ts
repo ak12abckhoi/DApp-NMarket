@@ -1,10 +1,21 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
 
+const CHAIN_IDS: Record<string, number> = {
+  localhost:               31337,
+  oasis_sapphire_testnet:  23295,
+};
+
 async function main() {
   const [deployer] = await ethers.getSigners();
-  console.log("Deploying with:", deployer.address);
+  const networkName = network.name;
+  const chainId = CHAIN_IDS[networkName] ?? Number((await ethers.provider.getNetwork()).chainId);
+
+  console.log(`Network:  ${networkName} (chainId ${chainId})`);
+  console.log(`Deployer: ${deployer.address}`);
+  const balance = await ethers.provider.getBalance(deployer.address);
+  console.log(`Balance:  ${ethers.formatEther(balance)} tokens\n`);
 
   // 1. Deploy NFTCollection
   const NFTCollection = await ethers.getContractFactory("NFTCollection");
@@ -36,36 +47,35 @@ async function main() {
   await factory.waitForDeployment();
   console.log("NFTFactory:", await factory.getAddress());
 
-  // 4. Lưu địa chỉ vào file JSON
+  // 4. Lưu địa chỉ vào deployments/<network>.json
   const addresses = {
     NFTCollection:  await nft.getAddress(),
     NFTMarketplace: await market.getAddress(),
     NFTFactory:     await factory.getAddress(),
     deployer:       deployer.address,
+    chainId,
     deployedAt:     new Date().toISOString(),
   };
 
   const outDir = path.join(__dirname, "../deployments");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
-  fs.writeFileSync(
-    path.join(outDir, "localhost.json"),
-    JSON.stringify(addresses, null, 2)
-  );
+  const deployFile = path.join(outDir, `${networkName}.json`);
+  fs.writeFileSync(deployFile, JSON.stringify(addresses, null, 2));
+  console.log(`\nSaved to deployments/${networkName}.json`);
 
-  console.log("\nDone! Saved to deployments/localhost.json");
-  console.log(addresses);
-
+  // 5. Sync lên frontend/src/config/contracts.json
   const frontendConfig = {
     NFTCollection:  await nft.getAddress(),
     NFTMarketplace: await market.getAddress(),
     NFTFactory:     await factory.getAddress(),
     deployer:       deployer.address,
-    chainId:        31337,
+    chainId,
   };
 
   const frontendPath = path.join(__dirname, "../../frontend/src/config/contracts.json");
   fs.writeFileSync(frontendPath, JSON.stringify(frontendConfig, null, 2));
-  console.log("✅ Synced to frontend/src/config/contracts.json");
+  console.log("Synced to frontend/src/config/contracts.json");
+  console.log(addresses);
 }
 
 main().catch((e) => { console.error(e); process.exitCode = 1; });

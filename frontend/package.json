@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@metamask/sdk": "^0.33.1",
+    "@oasisprotocol/sapphire-paratime": "^2.3.0",
     "@tanstack/react-query": "^5.91.0",
     "axios": "^1.13.6",
     "react": "^19.2.4",

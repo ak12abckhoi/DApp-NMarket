@@ -22,3 +22,6 @@ backend/__pycache__/
 *.pyc
 
 .DS_Store
+
+# Hardhat persistent chain state (local dev only)
+contracts/.chain-state.json

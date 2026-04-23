@@ -1,25 +1,35 @@
 import { useParams } from "react-router-dom";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useWalletClient, useWaitForTransactionReceipt } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useListing, useBuyNFT, usePlaceBid } from "@/hooks/useMarketplace";
 import { Listing, ListingType, ListingStatus } from "@/types";
 import { fetchMetadata, resolveIPFS } from "@/utils/ipfs";
-import { MARKETPLACE_ABI } from "@/config/web3";
+import { MARKETPLACE_ABI, oasisSapphireTestnet } from "@/config/web3";
 import contracts from "@/config/contracts.json";
 
-// Hook settle auction
 function useSettleAuction() {
-  const { writeContractAsync, isPending, data: hash } = useWriteContract();
+  const { data: walletClient } = useWalletClient();
+  const [isPending, setIsPending] = useState(false);
+  const [hash, setHash] = useState<`0x${string}` | undefined>();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
   const settle = async (listingId: number) => {
-    return writeContractAsync({
-      address: contracts.NFTMarketplace as `0x${string}`,
-      abi: MARKETPLACE_ABI,
-      functionName: "settleAuction",
-      args: [BigInt(listingId)],
-    });
+    if (!walletClient) throw new Error("Wallet not connected");
+    setIsPending(true);
+    try {
+      const h = await walletClient.writeContract({
+        address: contracts.NFTMarketplace as `0x${string}`,
+        abi: MARKETPLACE_ABI,
+        functionName: "settleAuction",
+        args: [BigInt(listingId)],
+        gas: BigInt(200_000),
+      });
+      setHash(h);
+      return h;
+    } finally {
+      setIsPending(false);
+    }
   };
   return { settle, isPending, isConfirming, isSuccess };
 }
@@ -63,18 +73,19 @@ export default function NFTDetailPage() {
   const isAuctionOver = isAuction && listing.endTime > 0 && Date.now() > listing.endTime * 1000;
   const canSettle     = isAuctionOver && isActive;
 
-  // Minimum bid = max(price, highestBid) + 1 wei (contract yêu cầu phải > cả 2)
-  const minBid = listing.highestBid > listing.price ? listing.highestBid : listing.price;
+  const minBid    = listing.highestBid > listing.price ? listing.highestBid : listing.price;
   const minBidEth = Number(formatEther(minBid));
 
-  // Fetch ảnh + metadata
+  // Fetch metadata từ Oasis Sapphire Testnet
   useEffect(() => {
     if (!data) return;
     const load = async () => {
       try {
         const { createPublicClient, http } = await import("viem");
-        const { localhost } = await import("viem/chains");
-        const client = createPublicClient({ chain: localhost, transport: http() });
+        const client = createPublicClient({
+          chain:     oasisSapphireTestnet,
+          transport: http("https://testnet.sapphire.oasis.io"),
+        });
         const tokenURI = await client.readContract({
           address: listing.nftContract as `0x${string}`,
           abi: [{ name: "tokenURI", type: "function", stateMutability: "view",
@@ -104,7 +115,7 @@ export default function NFTDetailPage() {
     if (!bidAmount) return toast.error("Enter bid amount");
     const bidWei = parseEther(bidAmount);
     if (bidWei <= minBid) {
-      return toast.error(`Bid must be > ${(minBidEth + 0.001).toFixed(4)} ETH`);
+      return toast.error(`Bid must be > ${(minBidEth + 0.001).toFixed(4)} TEST`);
     }
     try {
       await bid(listing.listingId, bidAmount);
@@ -148,7 +159,7 @@ export default function NFTDetailPage() {
               {isAuction ? (listing.highestBid > 0n ? "Current Bid" : "Starting Price") : "Price"}
             </p>
             <p className="text-3xl font-bold text-white">
-              {formatEther(isAuction && listing.highestBid > 0n ? listing.highestBid : listing.price)} ETH
+              {formatEther(isAuction && listing.highestBid > 0n ? listing.highestBid : listing.price)} TEST
             </p>
             {isAuction && listing.endTime > 0 && (
               <p className="text-orange-400 text-sm mt-2">
@@ -170,11 +181,11 @@ export default function NFTDetailPage() {
               ) : !isAuctionOver ? (
                 <div className="flex flex-col gap-2">
                   <p className="text-gray-500 text-xs">
-                    Min bid: &gt; {minBidEth.toFixed(4)} ETH
+                    Min bid: &gt; {minBidEth.toFixed(4)} TEST
                   </p>
                   <div className="flex gap-2">
                     <input type="number" step="0.001" min={minBidEth + 0.001}
-                      placeholder={`> ${minBidEth.toFixed(4)} ETH`}
+                      placeholder={`> ${minBidEth.toFixed(4)} TEST`}
                       value={bidAmount} onChange={(e) => setBidAmount(e.target.value)}
                       className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
                     <button onClick={handleBid} disabled={isBidding}
@@ -187,7 +198,6 @@ export default function NFTDetailPage() {
             </div>
           )}
 
-          {/* Settle auction button — ai cũng có thể gọi sau khi kết thúc */}
           {canSettle && (
             <button onClick={handleSettle} disabled={isSettling}
               className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors">

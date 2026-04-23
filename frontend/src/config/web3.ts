@@ -1,15 +1,31 @@
 import { http, createConfig } from "wagmi";
-import { hardhat, sepolia, mainnet } from "wagmi/chains";
+import { defineChain } from "viem";
 import { injected, metaMask } from "wagmi/connectors";
 import { parseAbi } from "viem";
 
+export const oasisSapphireTestnet = defineChain({
+  id: 23295,
+  name: "Oasis Sapphire Testnet",
+  nativeCurrency: { decimals: 18, name: "TEST", symbol: "TEST" },
+  rpcUrls: {
+    default: { http: ["https://testnet.sapphire.oasis.io"] },
+  },
+  blockExplorers: {
+    default: {
+      name: "Oasis Explorer",
+      url: "https://testnet.explorer.sapphire.oasis.io",
+    },
+  },
+  testnet: true,
+});
+
 export const wagmiConfig = createConfig({
-  chains: [hardhat, sepolia, mainnet],
+  chains: [oasisSapphireTestnet],
   connectors: [injected(), metaMask()],
   transports: {
-    [hardhat.id]:  http("http://127.0.0.1:8545"),
-    [sepolia.id]:  http(import.meta.env.VITE_SEPOLIA_RPC_URL || ""),
-    [mainnet.id]:  http(import.meta.env.VITE_MAINNET_RPC_URL || ""),
+    [oasisSapphireTestnet.id]: http(
+      import.meta.env.VITE_OASIS_RPC_URL || "https://testnet.sapphire.oasis.io"
+    ),
   },
 });
 

@@ -1,10 +1,31 @@
 import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import init_db
-from app.api import listings, stats
+from app.api import listings, stats, activity, nfts
+# import models so init_db creates all tables
+import app.models.listing        # noqa: F401
+import app.models.activity       # noqa: F401
+import app.models.indexer_state  # noqa: F401
 
-app = FastAPI(title="NFT Marketplace API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await init_db()
+    asyncio.create_task(start_indexer())
+    yield
+
+
+async def start_indexer():
+    try:
+        from app.indexer.listener import run_indexer
+        await run_indexer()
+    except Exception as e:
+        print(f"[INDEXER] Failed to start: {e}")
+
+
+app = FastAPI(title="NFT Marketplace API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,27 +36,18 @@ app.add_middleware(
 
 app.include_router(listings.router)
 app.include_router(stats.router)
+app.include_router(activity.router)
+app.include_router(nfts.router)
 
-@app.on_event("startup")
-async def startup():
-    await init_db()
-    # Khởi động indexer chạy nền
-    asyncio.create_task(start_indexer())
-
-async def start_indexer():
-    try:
-        from app.indexer.listener import run_indexer
-        await run_indexer()
-    except Exception as e:
-        print(f"[INDEXER] Failed to start: {e}")
 
 @app.get("/")
 async def root():
     return {"message": "NFT Marketplace API", "version": "1.0.0"}
 
+
 @app.get("/debug/rpc")
 async def debug_rpc():
-    from app.services.rpc import rpc_call, get_total_listings, get_block_number
+    from app.services.rpc import rpc_call, get_block_number
     from app.core.config import settings
     block = await get_block_number()
     code = await rpc_call("eth_getCode", [settings.NFT_MARKETPLACE, "latest"])

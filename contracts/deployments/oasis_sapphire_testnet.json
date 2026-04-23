@@ -3,5 +3,6 @@
   "NFTMarketplace": "0xaC831023BDEBc7876Fdb71602F149d89D8E54504",
   "NFTFactory": "0xab56D1258e3666f8d315db1cfd49F8f402d995Ec",
   "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-  "chainId": 23295
+  "chainId": 23295,
+  "deployedAt": "2026-04-22T16:01:41.360Z"
 }
