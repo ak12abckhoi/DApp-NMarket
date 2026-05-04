@@ -29,7 +29,7 @@ export function useListing(listingId: number) {
     functionName: "getListing",
     args: [BigInt(listingId)],
     chainId: CHAIN_ID,
-    query: { enabled: true },
+    query: { enabled: true, refetchInterval: 3000 },
   });
 }
 

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: nft-marketplace-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: RPC_URL
+        value: https://testnet.sapphire.oasis.io
+      - key: NFT_COLLECTION
+        value: 0xbAD6a56C82776364AA4Db83B3d2d2FC3693eba7A
+      - key: NFT_MARKETPLACE
+        value: 0xaC831023BDEBc7876Fdb71602F149d89D8E54504
+      - key: DATABASE_URL
+        sync: false   # điền thủ công trên Render dashboard
+      - key: ALLOWED_ORIGINS
+        sync: false   # điền URL Vercel sau khi deploy frontend

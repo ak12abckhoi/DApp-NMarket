@@ -8,7 +8,7 @@ import contracts from "@/config/contracts.json";
 import { resolveIPFS, fetchMetadata } from "@/utils/ipfs";
 import { generatePlaceholder } from "@/utils/placeholder";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 interface OwnedNFT {
   token_id: number;

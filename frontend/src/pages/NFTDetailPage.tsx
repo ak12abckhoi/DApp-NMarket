@@ -42,9 +42,10 @@ export default function NFTDetailPage() {
   const { bid,    isPending: isBidding   } = usePlaceBid();
   const { settle, isPending: isSettling  } = useSettleAuction();
 
-  const [bidAmount, setBidAmount] = useState("");
-  const [image, setImage]         = useState<string>("");
-  const [nftName, setNftName]     = useState<string>("");
+  const [bidAmount, setBidAmount]       = useState("");
+  const [image, setImage]               = useState<string>("");
+  const [nftName, setNftName]           = useState<string>("");
+  const [wasHighestBidder, setWasHighestBidder] = useState(false);
 
   if (isLoading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -75,6 +76,21 @@ export default function NFTDetailPage() {
 
   const minBid    = listing.highestBid > listing.price ? listing.highestBid : listing.price;
   const minBidEth = Number(formatEther(minBid));
+
+  // Phát hiện khi bị outbid sau khi đã từng là highest bidder
+  useEffect(() => {
+    if (!data || !address) return;
+    const highestBidder = (data[6] as string).toLowerCase();
+    const isCurrentlyHighest = highestBidder === address.toLowerCase();
+
+    if (wasHighestBidder && !isCurrentlyHighest && highestBidder !== "0x0000000000000000000000000000000000000000") {
+      toast.error(
+        "Bạn vừa bị outbid! Tiền bid cũ đang chờ rút tại trang My Collection.",
+        { duration: 6000, id: "outbid-notify" }
+      );
+    }
+    setWasHighestBidder(isCurrentlyHighest);
+  }, [data, address]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch metadata từ Oasis Sapphire Testnet
   useEffect(() => {
@@ -112,16 +128,28 @@ export default function NFTDetailPage() {
   };
 
   const handleBid = async () => {
-    if (!bidAmount) return toast.error("Enter bid amount");
+    if (!bidAmount) return toast.error("Nhập số lượng bid");
     const bidWei = parseEther(bidAmount);
     if (bidWei <= minBid) {
-      return toast.error(`Bid must be > ${(minBidEth + 0.001).toFixed(4)} TEST`);
+      return toast.error(`Bid phải lớn hơn ${(minBidEth + 0.001).toFixed(4)} TEST`);
     }
     try {
       await bid(listing.listingId, bidAmount);
-      toast.success("Bid placed! 🔥");
+      toast.success("Đặt bid thành công! 🔥");
       setBidAmount("");
-    } catch (e: any) { toast.error(e.shortMessage || "Bid failed"); }
+    } catch (e: any) {
+      const msg: string = e.shortMessage || e.message || "";
+      if (msg.toLowerCase().includes("bid too low")) {
+        toast.error(
+          "Bạn vừa bị outbid! Có người khác vừa bid cao hơn trong lúc bạn xác nhận. Kiểm tra giá mới và bid lại.",
+          { duration: 5000 }
+        );
+      } else if (msg.toLowerCase().includes("auction ended")) {
+        toast.error("Đấu giá đã kết thúc!", { duration: 4000 });
+      } else {
+        toast.error(msg || "Đặt bid thất bại");
+      }
+    }
   };
 
   const handleSettle = async () => {

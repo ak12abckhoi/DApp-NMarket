@@ -207,6 +207,77 @@ npm run seed              # Seed localhost
 
 ---
 
+## Deploy lên Production (Free)
+
+### Tổng quan
+
+| Phần | Service | Ghi chú |
+|------|---------|---------|
+| Frontend | **Vercel** | Free, CDN toàn cầu, auto-deploy từ GitHub |
+| Backend | **Render** | Free 750h/tháng, ngủ sau 15 phút không dùng |
+| Database | **Supabase** | Free 500MB PostgreSQL, không expire |
+
+> Smart contracts đã deploy trên Oasis Sapphire Testnet, không cần làm lại.
+
+---
+
+### Bước 1 — Push code lên GitHub
+
+```bash
+git add .
+git commit -m "prepare for production"
+git push
+```
+
+### Bước 2 — Tạo Database trên Supabase
+
+1. Vào **supabase.com** → New project
+2. **Settings → Database → Connection string → URI** → copy URL
+3. URL có dạng: `postgres://postgres:[password]@db.xxx.supabase.co:5432/postgres`
+   *(backend tự convert sang asyncpg, không cần sửa)*
+
+### Bước 3 — Deploy Backend trên Render
+
+1. Vào **render.com** → New → Web Service → Connect repo GitHub
+2. Cấu hình:
+   - **Root Directory**: `backend`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+3. Thêm Environment Variables:
+   ```
+   RPC_URL         = https://testnet.sapphire.oasis.io
+   NFT_COLLECTION  = 0xbAD6a56C82776364AA4Db83B3d2d2FC3693eba7A
+   NFT_MARKETPLACE = 0xaC831023BDEBc7876Fdb71602F149d89D8E54504
+   DATABASE_URL    = <URL Supabase từ bước 2>
+   ALLOWED_ORIGINS = http://localhost:5173
+   ```
+4. Deploy → copy URL Render (vd: `https://nft-api.onrender.com`)
+
+### Bước 4 — Deploy Frontend trên Vercel
+
+1. Vào **vercel.com** → New Project → Import repo → chọn đúng repo
+2. Cấu hình:
+   - **Root Directory**: `frontend`
+   - **Framework Preset**: Vite
+3. Thêm Environment Variables:
+   ```
+   VITE_PINATA_JWT     = <jwt của bạn>
+   VITE_PINATA_GATEWAY = https://ipfs.io/ipfs
+   VITE_OASIS_RPC_URL  = https://testnet.sapphire.oasis.io
+   VITE_API_URL        = <URL Render từ bước 3>
+   ```
+4. Deploy → copy URL Vercel (vd: `https://nft-marketplace.vercel.app`)
+
+### Bước 5 — Cập nhật CORS trên Render
+
+Vào Render → Environment → sửa `ALLOWED_ORIGINS`:
+```
+ALLOWED_ORIGINS = http://localhost:5173,https://nft-marketplace.vercel.app
+```
+Render tự restart. Xong!
+
+---
+
 ## Tính năng
 
 | Tính năng | Mô tả |

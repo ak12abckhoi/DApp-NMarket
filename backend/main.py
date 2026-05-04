@@ -2,6 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
 from app.db.database import init_db
 from app.api import listings, stats, activity, nfts
 # import models so init_db creates all tables
@@ -29,7 +30,8 @@ app = FastAPI(title="NFT Marketplace API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=settings.allowed_origins_list,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -43,6 +45,11 @@ app.include_router(nfts.router)
 @app.get("/")
 async def root():
     return {"message": "NFT Marketplace API", "version": "1.0.0"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 
 
 @app.get("/debug/rpc")
